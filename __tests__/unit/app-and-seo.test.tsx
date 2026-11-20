@@ -12,10 +12,11 @@ import { cn } from '@/lib/utils';
 import { generateJsonLd, generateToolMetadata } from '@/lib/seo';
 import toolConfig from '@/tool/tool.config';
 import { getPublicSiteUrl, templateMetadata } from '@/tool/template-metadata';
-import { notepadTool } from '@/tool/notepad-state';
-import { ToolCanvas } from '@/tool/components/tool-canvas';
-import { ToolSidebar } from '@/tool/components/tool-sidebar';
-import { ToolToolbar } from '@/tool/components/tool-toolbar';
+import { nanoidTool } from '@/tool/tool-definition';
+import { makeToolStateForTest } from '@/../__tests__/helpers/tool-state';
+import { ToolCanvas } from '@/tool/components/Canvas';
+import { ToolSidebar } from '@/tool/components/Sidebar';
+import { ToolToolbar } from '@/tool/components/Toolbar';
 import type { ExporterLoader } from '@itsjust/core';
 
 vi.mock('next/link', () => ({
@@ -92,20 +93,20 @@ describe('app and seo', () => {
   it('covers tool definition and helper exports', async () => {
     expect(cn('a', undefined, 'b', false, null, 'c')).toBe('a b c');
     expect(getPublicSiteUrl()).toBe('http://localhost:3000');
-    expect(notepadTool.deserialize({ content: 'x' })).toEqual({
+    const state = makeToolStateForTest();
+    expect(nanoidTool.deserialize(state)).toEqual({
       success: true,
-      data: { content: 'x', title: '' },
+      data: state,
     });
-    expect(notepadTool.deserialize({ nope: true })).toEqual({
+    expect(nanoidTool.deserialize({ nope: true })).toEqual({
       success: false,
-      error: 'Invalid data format: expected { content: string, title?: string }',
+      error: 'Invalid data format: expected valid Nano ID state',
     });
-    expect(notepadTool.serialize({ content: 'x' })).toContain('"content": "x"');
-    expect(notepadTool.deserialize({ content: 'x', title: 'My Note' })).toEqual({
-      success: true,
-      data: { content: 'x', title: 'My Note' },
-    });
-    const exporters = (notepadTool as { exporters?: Array<{ loader: ExporterLoader }> }).exporters ?? [];
+    expect(nanoidTool.serialize(state)).toContain('"length":');
+    const result = nanoidTool.deserialize({ ...state, generation: 12 });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.generation).toBe(12);
+    const exporters = (nanoidTool as { exporters?: Array<{ loader: ExporterLoader }> }).exporters ?? [];
     expect(exporters).toHaveLength(4);
     const first = exporters[0];
     expect(first).toBeDefined();
@@ -116,16 +117,16 @@ describe('app and seo', () => {
   });
 
   it('renders tool components', () => {
+    const state = makeToolStateForTest();
     render(
       <>
         <ToolToolbar />
-        <ToolSidebar text="Hello world" fontSize={16} onFontSizeChange={() => {}} />
-        <ToolCanvas text="" fontSize={16} />
+        <ToolSidebar state={state} />
+        <ToolCanvas ids={state.ids} generation={0} alphabet={state.alphabet} error={null} />
       </>
     );
 
     expect(screen.getByRole('link', { name: 'Open help page' })).toBeInTheDocument();
-    expect(screen.getByText('11')).toBeInTheDocument(); // char count for "Hello world"
-    expect(screen.getByRole('application', { name: 'Notepad canvas' })).toBeInTheDocument();
+    expect(screen.getByRole('application', { name: 'Nano ID canvas' })).toBeInTheDocument();
   });
 });

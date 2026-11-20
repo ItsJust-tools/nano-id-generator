@@ -22,6 +22,19 @@ const mockHandleExport = vi.fn();
 const mockImport = vi.fn();
 const mockToolbarActions = { canUndo: true, canRedo: true, onUndo: vi.fn(), onRedo: vi.fn() };
 
+const mockStateData = {
+  ids: ['AAAAAAAAAAAAAAAAAAAAAA', 'BBBBBBBBBBBBBBBBBBBBBB'],
+  length: 21,
+  batchSize: 2,
+  alphabet: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_',
+  alphabetPreset: 'url-safe',
+  seed: null,
+  useSeed: false,
+  generationRate: 1000,
+  error: null,
+  generation: 1,
+};
+
 vi.mock('@itsjust/core', () => ({
   ToolShell: ({ toolbar, sidebar, canvas, statusBar }: Record<string, unknown>) => (
     <div>
@@ -38,7 +51,7 @@ vi.mock('@itsjust/core', () => ({
   ),
   useTool: () => ({
     state: {
-      data: { text: 'Hello' },
+      data: mockStateData,
       setData: mockSetData,
       isDirty: false,
       lastSaved: 'just now',
@@ -54,24 +67,39 @@ vi.mock('@itsjust/core', () => ({
 
 vi.mock('@/tool', () => ({
   toolConfig: {
-    id: 'simple-notepad',
-    name: 'Notepad',
+    id: 'tool-1795161888',
+    name: 'Nano ID Generator',
     version: '1.0.0',
     features: { sidebar: true },
-    theme: { brand: 'Notepad' },
+    theme: { brand: 'Nano ID Generator' },
   },
-  templateBaseVersion: '1.1.0',
-  ToolCanvas: ({ text }: { text: string }) => <div>canvas:{text}</div>,
+  templateBaseVersion: '1.4.0',
+  ToolCanvas: ({ ids, generation }: { ids: string[]; generation: number }) => (
+    <div>
+      canvas:gen{generation}:{ids.join(',')}
+    </div>
+  ),
   ToolToolbar: () => <div>toolbar</div>,
-  ToolSidebar: ({ text }: { text: string }) => <div>sidebar:{text}</div>,
+  ToolSidebar: ({ state }: { state: typeof mockStateData }) => (
+    <div>sidebar:{state.alphabetPreset}</div>
+  ),
+  regenerate: (s: typeof mockStateData) => ({ ...s, generation: s.generation + 1 }),
+  setLength: (s: typeof mockStateData, _l: number) => s,
+  setAlphabet: (s: typeof mockStateData, _a: string) => s,
+  setBatchSize: (s: typeof mockStateData, _b: number) => s,
+  setSeedMode: (s: typeof mockStateData, _u: boolean, _seed?: number) => s,
 }));
 
-vi.mock('@/tool/notepad-state', () => ({
-  notepadTool: {
-    serialize: (state: unknown) => JSON.stringify(state),
-    deserialize: () => ({ success: true, data: { content: 'From Shared Url', title: '' } }),
-  },
-}));
+vi.mock('@/tool/tool-definition', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/tool/tool-definition')>();
+  return {
+    ...original,
+    nanoidTool: {
+      serialize: (state: unknown) => JSON.stringify(state),
+      deserialize: () => ({ success: true, data: { ...mockStateData, generation: 9 } }),
+    },
+  };
+});
 
 describe('app client and help page', () => {
   beforeEach(() => {
@@ -85,7 +113,7 @@ describe('app client and help page', () => {
       writable: true,
       value: vi.fn().mockResolvedValue(undefined),
     });
-    window.history.replaceState(null, '', 'http://localhost:3000/?state=e30%3D');
+    window.history.replaceState(null, '', 'http://localhost:3000/');
   });
 
   it('renders dynamic tool client wrapper', () => {
@@ -93,12 +121,15 @@ describe('app client and help page', () => {
     expect(screen.getByTestId('dynamic-tool-client')).toBeInTheDocument();
   });
 
+  it('renders generated ids in canvas', () => {
+    render(<ToolClient />);
+    expect(screen.getByText(/canvas:gen1:/)).toBeInTheDocument();
+  });
+
   it('handles share flow in tool client', async () => {
     render(<ToolClient />);
-
     expect(screen.getByText('toolbar')).toBeInTheDocument();
     fireEvent.click(screen.getByText('trigger-share'));
-
-    expect(mockToast).toHaveBeenCalled();
+    await vi.waitFor(() => expect(mockToast).toHaveBeenCalled());
   });
 });

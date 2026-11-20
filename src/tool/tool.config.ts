@@ -3,11 +3,12 @@ import packageJson from '../../package.json';
 
 export const templateBaseVersion = packageJson.version;
 
-const toolConfig = {
-  id: 'simple-notepad',
-  name: 'Notepad',
-  description: 'A clean, distraction-free notepad. Write, edit, and export your notes instantly.',
-  version: '1.3.0',
+const baseConfig = {
+  id: 'tool-1795161888',
+  name: 'Nano ID Generator',
+  description:
+    'Generates compact, URL-safe Nano IDs with configurable length and custom alphabet, batch generation, and collision probability estimates.',
+  version: '1.0.0',
   exportFormats: ['json', 'png', 'jpeg', 'webp', 'pdf'],
   features: {
     export: true,
@@ -18,20 +19,14 @@ const toolConfig = {
     darkMode: true,
   },
   theme: {
-    accent: '#10b981',
-    accentHover: '#059669',
-    accentSubtle: 'rgba(16, 185, 129, 0.08)',
-    brand: 'Notepad',
-    icon: '\u{1F4DF}',
+    accent: '#22c55e',
+    accentHover: '#16a34a',
+    accentSubtle: 'rgba(34, 197, 94, 0.08)',
+    brand: 'Nano ID Generator',
+    icon: '🧬',
   },
-  shortcuts: [
-    {
-      title: 'Notepad',
-      shortcuts: [
-        { keys: 'Ctrl+Shift+E', label: 'Export All', description: 'exports all formats at once' },
-      ],
-    },
-  ],
 } satisfies ToolConfig;
+
+export const toolConfig = { ...baseConfig, category: 'Developer' };
 
 export default toolConfig;
